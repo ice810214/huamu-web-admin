@@ -7,10 +7,23 @@
     "start": "next start"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.17",
+    "@fullcalendar/daygrid": "^6.1.17",
+    "@fullcalendar/interaction": "^6.1.17",
+    "@fullcalendar/react": "^6.1.17",
+    "@fullcalendar/timegrid": "^6.1.17",
+    "dnd-kit": "^0.0.2",
+    "file-saver": "^2.0.5",
+    "googleapis": "^148.0.0",
     "html2pdf.js": "^0.10.3",
+    "jszip": "^3.10.1",
     "next": "latest",
+    "qrcode.react": "^4.2.0",
     "react": "latest",
-    "react-dom": "latest"
+    "react-datepicker": "^8.3.0",
+    "react-dom": "latest",
+    "react-signature-canvas": "^1.1.0-alpha.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "22.15.3",

@@ -1,149 +1,107 @@
-"use client";
+// 📁 檔案路徑：app/auth/login/page.tsx
 
+'use client';
+
+import { useState } from 'react';
+import { auth, db } from '@/libs/firebase';
 import {
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-} from "firebase/auth";
-import { auth } from "@/libs/firebase";
-import { upsertUserAndSetRoleCookie } from "@/libs/user";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+} from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register" | "reset">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) router.push("/dashboard");
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  const handleGoogleLogin = async () => {
+  const handleAuth = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      await upsertUserAndSetRoleCookie(result.user);
-      router.push("/dashboard");
-    } catch (error: any) {
-      alert("登入失敗：" + error.message);
-    }
-  };
-
-  const handleEmailLogin = async () => {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      await upsertUserAndSetRoleCookie(result.user);
-      router.push("/dashboard");
-    } catch (error: any) {
-      alert("登入失敗：" + error.message);
-    }
-  };
-
-  const handleRegister = async () => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await upsertUserAndSetRoleCookie(result.user);
-      router.push("/dashboard");
-    } catch (error: any) {
-      if (error.code === "auth/email-already-in-use") {
-        alert("帳號已存在，請直接登入");
-        setMode("login");
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+        toast.success('登入成功');
+        router.push('/dashboard');
       } else {
-        alert("註冊失敗：" + error.message);
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, 'users', userCred.user.uid), {
+          email,
+          role: 'user',
+          createdAt: serverTimestamp(),
+        });
+        toast.success('註冊成功');
+        router.push('/dashboard');
       }
+    } catch (err: any) {
+      toast.error(err.message || '操作失敗');
     }
   };
 
-  const handleResetPassword = async () => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      alert("重設密碼信已寄出！");
-      setMode("login");
-    } catch (error: any) {
-      alert("寄送失敗：" + error.message);
-    }
+  const handleReset = async () => {
+    if (!email) return toast.error('請輸入 Email');
+    await sendPasswordResetEmail(auth, email);
+    toast.success('已寄送重設密碼信');
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
-      <div className="max-w-md w-full space-y-6 bg-white shadow-lg rounded-lg p-6">
-        <h1 className="text-xl font-bold text-center">
-          {mode === "login" && "登入後台"}
-          {mode === "register" && "註冊帳號"}
-          {mode === "reset" && "忘記密碼"}
-        </h1>
+    <div className="max-w-md mx-auto p-6 space-y-4">
+      <h1 className="text-2xl font-bold text-center mb-4">
+        {isLogin ? '登入' : '註冊'}帳號
+      </h1>
 
-        <input
-          type="email"
-          placeholder="電子郵件"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border p-2 rounded"
-        />
+      <input
+        type="email"
+        placeholder="Email"
+        className="w-full border p-2 rounded"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="密碼"
+        className="w-full border p-2 rounded"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
 
-        {mode !== "reset" && (
-          <input
-            type="password"
-            placeholder="密碼"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border p-2 rounded"
-          />
-        )}
+      <button
+        onClick={handleAuth}
+        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+      >
+        {isLogin ? '登入' : '註冊'}
+      </button>
 
-        {mode === "login" && (
-          <>
-            <button onClick={handleEmailLogin} className="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-900">
-              使用 Email 登入
-            </button>
-            <button onClick={() => setMode("register")} className="text-sm text-blue-600 hover:underline w-full text-center">
-              註冊帳號
-            </button>
-            <button onClick={() => setMode("reset")} className="text-sm text-blue-600 hover:underline w-full text-center">
-              忘記密碼？
-            </button>
-          </>
-        )}
+      {isLogin && (
+        <button
+          onClick={handleReset}
+          className="text-sm text-blue-500 hover:underline block text-center"
+        >
+          忘記密碼？
+        </button>
+      )}
 
-        {mode === "register" && (
-          <>
-            <button onClick={handleRegister} className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
-              建立帳號
-            </button>
-            <button onClick={() => setMode("login")} className="text-sm text-blue-600 hover:underline w-full text-center">
-              已有帳號？前往登入
-            </button>
-          </>
-        )}
+      <button
+        onClick={() => setIsLogin((prev) => !prev)}
+        className="text-sm text-gray-500 hover:underline block text-center"
+      >
+        {isLogin ? '還沒有帳號？前往註冊' : '已有帳號？前往登入'}
+      </button>
 
-        {mode === "reset" && (
-          <>
-            <button onClick={handleResetPassword} className="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700">
-              寄送重設密碼信件
-            </button>
-            <button onClick={() => setMode("login")} className="text-sm text-blue-600 hover:underline w-full text-center">
-              返回登入
-            </button>
-          </>
-        )}
+      <div className="text-center text-sm text-gray-400">或使用 LINE 登入</div>
 
-        {mode === "login" && (
-          <>
-            <hr className="my-4" />
-            <button onClick={handleGoogleLogin} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-              使用 Google 登入
-            </button>
-          </>
-        )}
-      </div>
-    </main>
+      <button
+        onClick={() => {
+          window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=token&client_id=YOUR_LINE_CHANNEL_ID&redirect_uri=${encodeURIComponent(
+            'https://YOUR_SITE_DOMAIN/auth/line-callback'
+          )}&scope=profile%20openid%20email&state=customState`;
+        }}
+        className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600"
+      >
+        使用 LINE 登入
+      </button>
+    </div>
   );
 }
